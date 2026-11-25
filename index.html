@@ -1,0 +1,1682 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DUNGEON QUEST: ภารกิจพิชิตอัลกอริทึม</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Prompt (Thai) & Orbitron (HUD/Numbers) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-deep: #050814;
+      --bg-panel: rgba(13, 20, 40, 0.85);
+      --neon-cyan: #06b6d4;
+      --neon-purple: #a855f7;
+      --neon-gold: #f59e0b;
+      --neon-crimson: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Prompt', sans-serif;
+      background-color: var(--bg-deep);
+      color: #e2e8f0;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.14) 0%, transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 45%),
+        radial-gradient(circle at 50% 90%, rgba(245, 158, 11, 0.08) 0%, transparent 40%),
+        linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    }
+
+    .font-hud {
+      font-family: 'Orbitron', 'Prompt', sans-serif;
+    }
+
+    /* Glass & Neon Panels */
+    .hunter-panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(6, 182, 212, 0.28);
+      box-shadow: 0 0 24px rgba(6, 182, 212, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+
+    .hunter-panel-purple {
+      background: rgba(18, 14, 38, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(168, 85, 247, 0.35);
+      box-shadow: 0 0 28px rgba(168, 85, 247, 0.12);
+    }
+
+    .neon-text-cyan {
+      text-shadow: 0 0 12px rgba(6, 182, 212, 0.7), 0 0 24px rgba(6, 182, 212, 0.35);
+    }
+
+    .neon-text-gold {
+      text-shadow: 0 0 12px rgba(245, 158, 11, 0.7), 0 0 24px rgba(245, 158, 11, 0.35);
+    }
+
+    /* Game Buttons */
+    .btn-neon-cyan {
+      background: linear-gradient(135deg, #0891b2 0%, #06b6d4 50%, #2563eb 100%);
+      box-shadow: 0 4px 18px rgba(6, 182, 212, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+    }
+    .btn-neon-cyan:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(6, 182, 212, 0.6);
+      filter: brightness(1.08);
+    }
+    .btn-neon-cyan:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    .btn-neon-purple {
+      background: linear-gradient(135deg, #7e22ce 0%, #a855f7 100%);
+      box-shadow: 0 4px 16px rgba(168, 85, 247, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .btn-neon-purple:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(168, 85, 247, 0.55);
+    }
+
+    /* Animations */
+    @keyframes floatIdle {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-10px) scale(1.02); }
+    }
+    .animate-enemy-idle {
+      animation: floatIdle 3s ease-in-out infinite;
+    }
+
+    @keyframes enemyHit {
+      0% { transform: translateX(0) scale(1); filter: brightness(1); }
+      20% { transform: translateX(-12px) rotate(-4deg) scale(0.95); filter: brightness(2.4) drop-shadow(0 0 18px #06b6d4); }
+      45% { transform: translateX(12px) rotate(4deg) scale(1.03); filter: brightness(2) drop-shadow(0 0 18px #f59e0b); }
+      70% { transform: translateX(-6px) rotate(-2deg); filter: brightness(1.4); }
+      100% { transform: translateX(0) scale(1); filter: brightness(1); }
+    }
+    .animate-enemy-hit {
+      animation: enemyHit 0.5s ease-out;
+    }
+
+    @keyframes screenShake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-8px, 4px); }
+      40% { transform: translate(8px, -4px); }
+      60% { transform: translate(-6px, -3px); }
+      80% { transform: translate(6px, 3px); }
+    }
+    .animate-screen-shake {
+      animation: screenShake 0.42s ease-in-out;
+    }
+
+    @keyframes floatDamage {
+      0% { opacity: 1; transform: translate(-50%, 0) scale(0.8); }
+      25% { opacity: 1; transform: translate(-50%, -22px) scale(1.25); }
+      100% { opacity: 0; transform: translate(-50%, -68px) scale(1); }
+    }
+    .damage-float {
+      position: absolute;
+      left: 50%;
+      top: 32%;
+      pointer-events: none;
+      z-index: 30;
+      animation: floatDamage 1.05s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 12px rgba(6, 182, 212, 0.35); }
+      50% { box-shadow: 0 0 26px rgba(6, 182, 212, 0.75); }
+    }
+    .pulse-cyan {
+      animation: pulseGlow 2.2s infinite;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070b18;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #06b6d4;
+    }
+  </style>
+</head>
+<body class="antialiased selection:bg-cyan-500/30 selection:text-cyan-200">
+  <!-- Main App Wrapper -->
+  <div id="app-root" class="min-h-screen flex flex-col">
+
+    <!-- ==================== PERSISTENT TOP HUD (Shown during Map/Combat/Report) ==================== -->
+    <header id="top-hud" class="hidden sticky top-0 z-40 border-b border-cyan-500/25 bg-[#060a17]/90 backdrop-blur-md">
+      <div class="max-w-5xl mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+        <!-- Player Identity & Rank -->
+        <div class="flex items-center gap-2.5">
+          <div id="hud-rank-badge" class="font-hud w-11 h-11 rounded-xl flex flex-col items-center justify-center border border-amber-400/60 bg-gradient-to-br from-amber-500/20 to-purple-600/30 shadow-lg">
+            <span class="text-[9px] text-amber-200/80 leading-none">RANK</span>
+            <span id="hud-rank-letter" class="text-lg font-black text-amber-300 leading-tight">E</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span id="hud-player-name" class="font-semibold text-sm sm:text-base text-white truncate max-w-[130px] sm:max-w-[180px]">Hunter</span>
+              <span id="hud-class-badge" class="text-[11px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">อัศวินตรรกะ</span>
+            </div>
+            <!-- HP & EXP Bars -->
+            <div class="flex items-center gap-3 mt-1">
+              <!-- HP -->
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] font-hud text-rose-400 font-bold">HP</span>
+                <div class="w-20 sm:w-28 h-2.5 bg-slate-800 rounded-full overflow-hidden border border-rose-500/30">
+                  <div id="hud-hp-bar" class="h-full bg-gradient-to-r from-rose-600 to-rose-400 transition-all duration-300" style="width: 100%"></div>
+                </div>
+                <span id="hud-hp-text" class="text-[11px] font-hud text-rose-200">100/100</span>
+              </div>
+              <!-- EXP -->
+              <div class="hidden sm:flex items-center gap-1.5">
+                <span class="text-[11px] font-hud text-cyan-400 font-bold">EXP</span>
+                <div class="w-24 h-2.5 bg-slate-800 rounded-full overflow-hidden border border-cyan-500/30">
+                  <div id="hud-exp-bar" class="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <span id="hud-exp-text" class="text-[11px] font-hud text-cyan-200">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Controls: Coins, Sound, Teacher Mode -->
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-400/30">
+            <span class="text-sm">🪙</span>
+            <span id="hud-coins" class="font-hud text-xs sm:text-sm font-bold text-amber-300">0</span>
+          </div>
+          <button id="btn-sound-toggle" onclick="toggleSound()" title="เปิด/ปิดเสียงเอฟเฟกต์"
+            class="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-600/60 text-cyan-300 transition">
+            <span id="sound-icon">🔊</span>
+          </button>
+          <button onclick="openTeacherModal()" title="จัดการโจทย์ (สำหรับผู้สอน)"
+            class="px-2.5 py-2 rounded-xl bg-purple-600/20 hover:bg-purple-600/35 border border-purple-400/40 text-purple-200 text-xs font-medium transition flex items-center gap-1">
+            <span>⚙️</span>
+            <span class="hidden md:inline">จัดการโจทย์</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT CONTAINER ==================== -->
+    <main class="flex-1 w-full max-w-5xl mx-auto px-4 py-6 sm:py-8">
+
+      <!-- ==================== SCREEN 1: ONBOARDING ==================== -->
+      <section id="screen-onboarding" class="space-y-6">
+        <!-- Hero Header -->
+        <div class="text-center space-y-3 pt-2">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/35 text-cyan-300 text-xs sm:text-sm font-medium">
+            <span>⚔️</span>
+            <span>นวัตกรรมการศึกษาแนว RPG ตะลุยดันเจี้ยน</span>
+          </div>
+          <h1 class="font-hud text-3xl sm:text-5xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-white to-purple-400 neon-text-cyan">
+            DUNGEON QUEST
+          </h1>
+          <p class="text-lg sm:text-2xl font-bold text-amber-300 neon-text-gold">
+            ภารกิจพิชิตอัลกอริทึม
+          </p>
+          <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+            สวมบทบาทนักล่าแห่งโลกดิจิทัล ตะลุย 4 ดันเจี้ยนความรู้ตั้งแต่พื้นฐานแนวคิดเชิงคำนวณ ผังงาน การแก้จุดผิดพลาด จนถึงด่านบอส Overlord Dragon!
+          </p>
+        </div>
+
+        <!-- Character Creation Panel -->
+        <div class="hunter-panel rounded-2xl p-5 sm:p-7 space-y-6 max-w-3xl mx-auto">
+          <!-- Name & Starting Rank -->
+          <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div class="flex-1">
+              <label for="input-player-name" class="block text-sm font-medium text-cyan-200 mb-2">
+                ชื่อตัวละครนักล่า (Hunter Name)
+              </label>
+              <input id="input-player-name" type="text" maxlength="20" placeholder="เช่น น้องไบต์, ก้อง, Hunter-01..."
+                class="w-full px-4 py-3 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition" />
+              <p id="name-error" class="hidden text-xs text-rose-400 mt-1.5">กรุณากรอกชื่อตัวละครก่อนเริ่มตะลุยดันเจี้ยน</p>
+            </div>
+            <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-slate-900/80 border border-amber-500/30 self-start sm:self-auto">
+              <div class="font-hud w-10 h-10 rounded-lg bg-amber-500/15 border border-amber-400/50 flex items-center justify-center text-xl font-black text-amber-300">
+                E
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">ระดับเริ่มต้น</div>
+                <div class="text-sm font-bold text-amber-300">RANK E (มือใหม่)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Class Selection -->
+          <div>
+            <label class="block text-sm font-medium text-cyan-200 mb-3">เลือกสายอาชีพ (เลือก 1 สาย)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5" id="class-cards">
+              <!-- Class 1: Logic Knight -->
+              <button type="button" onclick="selectClass('knight')" data-class="knight"
+                class="class-card text-left p-4 rounded-2xl bg-slate-900/80 border-2 border-cyan-400 bg-cyan-950/30 transition-all hover:border-cyan-300">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-11 h-11 rounded-xl bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center text-2xl">🛡️</div>
+                  <span class="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/30 font-medium">HP สูง</span>
+                </div>
+                <h3 class="font-bold text-base text-white">อัศวินตรรกะ</h3>
+                <p class="text-xs text-slate-400 mt-1">ทนทานต่อการโจมตี เหมาะสำหรับผู้ที่ชอบลุยอย่างมั่นใจ</p>
+                <div class="mt-3 pt-2.5 border-t border-slate-700/70 text-[11px] text-cyan-300 space-y-0.5">
+                  <div>❤️ HP เริ่มต้น: <strong>130</strong></div>
+                  <div>🧪 ยาฟื้นพลัง x2 | 💡 คำใบ้ x1</div>
+                </div>
+              </button>
+
+              <!-- Class 2: Code Mage -->
+              <button type="button" onclick="selectClass('mage')" data-class="mage"
+                class="class-card text-left p-4 rounded-2xl bg-slate-900/80 border-2 border-slate-700 transition-all hover:border-purple-400">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-11 h-11 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-2xl">🔮</div>
+                  <span class="text-[11px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-400/30 font-medium">สกิลคำใบ้เพิ่ม</span>
+                </div>
+                <h3 class="font-bold text-base text-white">จอมเวทโค้ด</h3>
+                <p class="text-xs text-slate-400 mt-1">เชี่ยวชาญเวทวิเคราะห์ มีสกิลคำใบ้และตัดช้อยส์มากเป็นพิเศษ</p>
+                <div class="mt-3 pt-2.5 border-t border-slate-700/70 text-[11px] text-purple-300 space-y-0.5">
+                  <div>❤️ HP เริ่มต้น: <strong>100</strong></div>
+                  <div>💡 คำใบ้ x3 | ⚡ 50/50 x2</div>
+                </div>
+              </button>
+
+              <!-- Class 3: Data Explorer -->
+              <button type="button" onclick="selectClass('explorer')" data-class="explorer"
+                class="class-card text-left p-4 rounded-2xl bg-slate-900/80 border-2 border-slate-700 transition-all hover:border-amber-400">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-2xl">🧭</div>
+                  <span class="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30 font-medium">EXP โบนัส</span>
+                </div>
+                <h3 class="font-bold text-base text-white">นักสำรวจข้อมูล</h3>
+                <p class="text-xs text-slate-400 mt-1">เก็บเกี่ยวประสบการณ์และเหรียญได้ไว อัป Rank ได้เร็วกว่าใคร</p>
+                <div class="mt-3 pt-2.5 border-t border-slate-700/70 text-[11px] text-amber-300 space-y-0.5">
+                  <div>❤️ HP เริ่มต้น: <strong>110</strong></div>
+                  <div>✨ โบนัส EXP & เหรียญ <strong>+30%</strong></div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex flex-col sm:flex-row items-center gap-3 pt-2">
+            <button onclick="startGame()"
+              class="btn-neon-cyan w-full sm:flex-1 py-3.5 px-6 rounded-xl font-bold text-base sm:text-lg text-white flex items-center justify-center gap-2 pulse-cyan">
+              <span>⚔️</span>
+              <span>เริ่มตะลุยดันเจี้ยน</span>
+            </button>
+            <button onclick="openTeacherModal()"
+              class="w-full sm:w-auto py-3.5 px-5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-purple-500/40 text-purple-200 font-medium text-sm flex items-center justify-center gap-2 transition">
+              <span>⚙️</span>
+              <span>จัดการโจทย์ (ผู้สอน)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SCREEN 2: DUNGEON MAP ==================== -->
+      <section id="screen-map" class="hidden space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2">
+              <span>🗺️</span>
+              <span>แผนที่ดันเจี้ยนอัลกอริทึม</span>
+            </h2>
+            <p class="text-slate-400 text-sm mt-1">พิชิตทีละด่านเพื่ออัป Rank และปลดล็อกด่านบอส Overlord Dragon</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="showReportScreen()"
+              class="px-4 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-cyan-500/30 text-cyan-200 text-xs sm:text-sm font-medium transition">
+              📊 ดูรายงานผลตอนนี้
+            </button>
+          </div>
+        </div>
+
+        <!-- 4-Stage Grid -->
+        <div id="dungeon-stages-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Dynamically populated by JS -->
+        </div>
+      </section>
+
+      <!-- ==================== SCREEN 3: TURN-BASED QUIZ COMBAT ==================== -->
+      <section id="screen-combat" class="hidden space-y-5">
+        <!-- Top Combat Bar -->
+        <div class="flex items-center justify-between">
+          <button onclick="returnToMap()" class="px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-600/60 text-slate-200 text-xs sm:text-sm transition flex items-center gap-1.5">
+            <span>⬅️</span>
+            <span>กลับแผนที่</span>
+          </button>
+          <div class="text-right">
+            <div id="combat-stage-title" class="text-xs sm:text-sm font-semibold text-cyan-300">ด่าน 1: โถงแห่งความจำ</div>
+            <div id="combat-bloom-badge" class="text-[11px] text-purple-300">ระดับ: ความจำ</div>
+          </div>
+        </div>
+
+        <!-- Arena Panel (Enemy Visual + Enemy HP) -->
+        <div id="combat-arena" class="hunter-panel-purple rounded-2xl p-5 relative overflow-hidden">
+          <!-- Floating Damage Container -->
+          <div id="damage-layer" class="absolute inset-0 pointer-events-none"></div>
+
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <!-- Enemy Info & HP -->
+            <div class="w-full sm:w-1/2 space-y-2.5 text-center sm:text-left order-2 sm:order-1">
+              <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-rose-500/15 border border-rose-500/35 text-rose-300 text-xs font-medium">
+                <span id="enemy-role-tag">มอนสเตอร์ประจำด่าน</span>
+              </div>
+              <h3 id="enemy-name" class="font-hud text-2xl sm:text-3xl font-extrabold text-white tracking-wide">Glitch Goblin</h3>
+
+              <!-- Enemy HP Bar -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-medium">
+                  <span class="text-rose-300">พลังชีวิตศัตรู</span>
+                  <span id="enemy-hp-text" class="font-hud text-rose-200">2 / 2</span>
+                </div>
+                <div id="enemy-hp-container" class="w-full h-4 bg-slate-900/90 rounded-full p-0.5 border border-rose-500/40 flex gap-1">
+                  <!-- Segments injected by JS -->
+                </div>
+              </div>
+
+              <!-- Question Progress -->
+              <div class="text-xs text-slate-400">
+                โจทย์ข้อที่ <span id="combat-q-num" class="text-cyan-300 font-bold">1</span> / <span id="combat-q-total">2</span>
+              </div>
+            </div>
+
+            <!-- Enemy SVG Container -->
+            <div class="order-1 sm:order-2 flex items-center justify-center w-40 h-40 sm:w-48 sm:h-48 relative">
+              <div id="enemy-svg-wrapper" class="w-full h-full flex items-center justify-center animate-enemy-idle">
+                <!-- SVG injected by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skill / Item Bar -->
+        <div class="grid grid-cols-3 gap-2.5">
+          <button id="btn-skill-potion" onclick="usePotion()"
+            class="p-2.5 sm:p-3 rounded-xl bg-slate-900/90 hover:bg-emerald-950/60 border border-emerald-500/40 text-left transition flex items-center justify-between gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+            <div class="flex items-center gap-2">
+              <span class="text-lg sm:text-xl">🧪</span>
+              <div>
+                <div class="text-xs sm:text-sm font-bold text-emerald-300 leading-tight">ยาฟื้นพลัง</div>
+                <div class="text-[10px] text-slate-400">+30 HP</div>
+              </div>
+            </div>
+            <span id="count-potion" class="font-hud text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-200">x1</span>
+          </button>
+
+          <button id="btn-skill-5050" onclick="useFiftyFifty()"
+            class="p-2.5 sm:p-3 rounded-xl bg-slate-900/90 hover:bg-cyan-950/60 border border-cyan-500/40 text-left transition flex items-center justify-between gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+            <div class="flex items-center gap-2">
+              <span class="text-lg sm:text-xl">⚡</span>
+              <div>
+                <div class="text-xs sm:text-sm font-bold text-cyan-300 leading-tight">สกิล 50/50</div>
+                <div class="text-[10px] text-slate-400">ตัดช้อยส์ผิด 2 ข้อ</div>
+              </div>
+            </div>
+            <span id="count-5050" class="font-hud text-xs font-bold px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-200">x1</span>
+          </button>
+
+          <button id="btn-skill-hint" onclick="useHint()"
+            class="p-2.5 sm:p-3 rounded-xl bg-slate-900/90 hover:bg-amber-950/60 border border-amber-500/40 text-left transition flex items-center justify-between gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+            <div class="flex items-center gap-2">
+              <span class="text-lg sm:text-xl">💡</span>
+              <div>
+                <div class="text-xs sm:text-sm font-bold text-amber-300 leading-tight">คำใบ้</div>
+                <div class="text-[10px] text-slate-400">เผยแนวคิด</div>
+              </div>
+            </div>
+            <span id="count-hint" class="font-hud text-xs font-bold px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-200">x1</span>
+          </button>
+        </div>
+
+        <!-- Hint Box (Hidden until used) -->
+        <div id="combat-hint-box" class="hidden p-3.5 rounded-xl bg-amber-500/10 border border-amber-400/40 text-amber-200 text-xs sm:text-sm flex items-start gap-2.5">
+          <span class="text-lg">💡</span>
+          <div>
+            <strong class="text-amber-300">คำใบ้จากระบบ:</strong>
+            <span id="combat-hint-text"></span>
+          </div>
+        </div>
+
+        <!-- Question & Options Card -->
+        <div class="hunter-panel rounded-2xl p-5 sm:p-6 space-y-4">
+          <h4 id="combat-question-text" class="text-base sm:text-lg font-semibold text-white leading-relaxed">
+            กำลังโหลดคำถาม...
+          </h4>
+
+          <div id="combat-options-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- 4 Option buttons injected by JS -->
+          </div>
+
+          <!-- Immediate Scaffolding Feedback Box -->
+          <div id="combat-feedback-box" class="hidden rounded-xl p-4 border space-y-3 mt-4">
+            <div class="flex items-start gap-3">
+              <span id="feedback-icon" class="text-2xl">⚔️</span>
+              <div class="space-y-1 flex-1">
+                <div id="feedback-title" class="font-bold text-base"></div>
+                <p id="feedback-explanation" class="text-xs sm:text-sm text-slate-200 leading-relaxed"></p>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <button id="btn-next-question" onclick="nextQuestion()"
+                class="btn-neon-cyan px-5 py-2.5 rounded-xl font-bold text-sm text-white">
+                ลุยต่อ ➡️
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== SCREEN 4: LEARNING ANALYTICS / REPORT CARD ==================== -->
+      <section id="screen-report" class="hidden space-y-6">
+        <div class="hunter-panel rounded-2xl p-6 sm:p-8 space-y-6 text-center relative overflow-hidden">
+          <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 text-xs sm:text-sm font-medium">
+            <span>📜</span>
+            <span>รายงานผลการเรียนรู้ (Learning Analytics)</span>
+          </div>
+
+          <!-- Final Rank Badge -->
+          <div class="flex flex-col items-center justify-center gap-2">
+            <div class="font-hud w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-400/25 via-purple-600/30 to-cyan-500/25 border-2 border-amber-400 flex flex-col items-center justify-center shadow-[0_0_30px_rgba(245,158,11,0.35)]">
+              <span class="text-xs text-amber-200">FINAL RANK</span>
+              <span id="report-rank" class="text-5xl font-black text-amber-300 neon-text-gold">S</span>
+            </div>
+            <h2 id="report-headline" class="text-2xl sm:text-3xl font-bold text-white mt-2">ยอดเยี่ยมมาก นักล่าอัลกอริทึม!</h2>
+            <p id="report-player-summary" class="text-slate-400 text-sm"></p>
+          </div>
+
+          <!-- Key Metrics -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-cyan-500/30">
+              <div class="text-xs text-slate-400">คะแนนรวม</div>
+              <div id="report-score" class="font-hud text-xl sm:text-2xl font-bold text-cyan-300 mt-1">0 / 9</div>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-purple-500/30">
+              <div class="text-xs text-slate-400">ความแม่นยำ</div>
+              <div id="report-accuracy" class="font-hud text-xl sm:text-2xl font-bold text-purple-300 mt-1">0%</div>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-amber-500/30">
+              <div class="text-xs text-slate-400">EXP สะสม</div>
+              <div id="report-exp" class="font-hud text-xl sm:text-2xl font-bold text-amber-300 mt-1">0</div>
+            </div>
+            <div class="p-3.5 rounded-xl bg-slate-900/80 border border-emerald-500/30">
+              <div class="text-xs text-slate-400">เหรียญรางวัล</div>
+              <div id="report-coins" class="font-hud text-xl sm:text-2xl font-bold text-emerald-300 mt-1">0</div>
+            </div>
+          </div>
+
+          <!-- Bloom's Taxonomy Breakdown -->
+          <div class="text-left space-y-3 bg-slate-900/70 p-4 sm:p-5 rounded-xl border border-slate-700/70">
+            <h3 class="font-bold text-sm sm:text-base text-cyan-200 flex items-center gap-2">
+              <span>📊</span>
+              <span>ผลการประเมินแยกตามระดับการเรียนรู้ (Bloom's Taxonomy)</span>
+            </h3>
+            <div id="report-bloom-bars" class="space-y-3">
+              <!-- Bars injected by JS -->
+            </div>
+          </div>
+
+          <!-- Strengths & Areas to Review -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+            <div class="p-4 rounded-xl bg-emerald-950/35 border border-emerald-500/35">
+              <h4 class="font-bold text-sm text-emerald-300 mb-2">🌟 จุดแข็งของคุณ</h4>
+              <ul id="report-strengths" class="text-xs sm:text-sm text-slate-200 space-y-1.5 list-disc list-inside"></ul>
+            </div>
+            <div class="p-4 rounded-xl bg-amber-950/30 border border-amber-500/35">
+              <h4 class="font-bold text-sm text-amber-300 mb-2">📌 หัวข้อที่ควรทบทวน</h4>
+              <ul id="report-review" class="text-xs sm:text-sm text-slate-200 space-y-1.5 list-disc list-inside"></ul>
+            </div>
+          </div>
+
+          <!-- Report Actions -->
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button onclick="resetAndReplay()"
+              class="btn-neon-cyan w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2">
+              <span>🔄</span>
+              <span>เล่นใหม่อีกครั้ง</span>
+            </button>
+            <button onclick="openTeacherModal()"
+              class="btn-neon-purple w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2">
+              <span>⚙️</span>
+              <span>จัดการโจทย์ (สำหรับผู้สอน)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ==================== DEFEAT / STAGE CLEAR OVERLAY MODAL ==================== -->
+  <div id="modal-overlay-alert" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="hunter-panel rounded-2xl max-w-md w-full p-6 text-center space-y-4">
+      <div id="overlay-icon" class="text-5xl">🏆</div>
+      <h3 id="overlay-title" class="text-2xl font-bold text-white">พิชิตด่านสำเร็จ!</h3>
+      <p id="overlay-desc" class="text-sm text-slate-300"></p>
+      <div id="overlay-actions" class="flex flex-col sm:flex-row gap-2.5 justify-center pt-2"></div>
+    </div>
+  </div>
+
+  <!-- ==================== TEACHER QUESTION MANAGER MODAL ==================== -->
+  <div id="modal-teacher" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+    <div class="hunter-panel rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-5 py-4 border-b border-cyan-500/25 flex items-center justify-between bg-slate-900/90">
+        <div>
+          <h3 class="font-bold text-lg text-white flex items-center gap-2">
+            <span>⚙️</span>
+            <span>ระบบจัดการโจทย์ (สำหรับผู้สอน)</span>
+          </h3>
+          <p class="text-xs text-slate-400">แก้ไขหรือเพิ่มคำถามใหม่ได้ทันที บันทึกอัตโนมัติในเบราว์เซอร์ (LocalStorage)</p>
+        </div>
+        <button onclick="closeTeacherModal()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 overflow-y-auto space-y-5 flex-1">
+        <!-- Stage Selector + Reset -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <label for="teacher-stage-select" class="text-xs sm:text-sm text-cyan-200 font-medium">เลือกด่าน:</label>
+            <select id="teacher-stage-select" onchange="renderTeacherQuestionList()"
+              class="px-3 py-2 rounded-xl bg-slate-900 border border-cyan-500/40 text-white text-xs sm:text-sm focus:outline-none">
+              <option value="1">ด่าน 1: โถงแห่งความจำ (Glitch Goblin)</option>
+              <option value="2">ด่าน 2: ป่าแห่งความเข้าใจ (Loop Slime)</option>
+              <option value="3">ด่าน 3: หอคอยมินิบอส (Logic Golem)</option>
+              <option value="4">ด่าน 4: บัลลังก์บอส (Overlord Dragon)</option>
+            </select>
+          </div>
+          <button onclick="resetDefaultQuestions()"
+            class="px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-300 text-xs font-medium transition">
+            🔄 รีเซ็ตเป็นโจทย์เริ่มต้น
+          </button>
+        </div>
+
+        <!-- Existing Questions List -->
+        <div id="teacher-question-list" class="space-y-2.5"></div>
+
+        <!-- Add / Edit Form -->
+        <div class="p-4 rounded-xl bg-slate-900/90 border border-purple-500/35 space-y-3">
+          <h4 id="teacher-form-title" class="font-bold text-sm text-purple-300">➕ เพิ่มโจทย์ใหม่ในด่านนี้</h4>
+          <input type="hidden" id="edit-q-index" value="-1" />
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">คำถาม</label>
+            <textarea id="t-q-text" rows="2" placeholder="พิมพ์คำถามที่นี่..."
+              class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-sm focus:border-cyan-400 focus:outline-none"></textarea>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <input id="t-opt-0" type="text" placeholder="ตัวเลือก ก (Index 0)" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm" />
+            <input id="t-opt-1" type="text" placeholder="ตัวเลือก ข (Index 1)" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm" />
+            <input id="t-opt-2" type="text" placeholder="ตัวเลือก ค (Index 2)" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm" />
+            <input id="t-opt-3" type="text" placeholder="ตัวเลือก ง (Index 3)" class="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">คำตอบที่ถูกต้อง</label>
+              <select id="t-correct" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm">
+                <option value="0">ตัวเลือก ก</option>
+                <option value="1">ตัวเลือก ข</option>
+                <option value="2">ตัวเลือก ค</option>
+                <option value="3">ตัวเลือก ง</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 mb-1">คำใบ้ (Hint)</label>
+              <input id="t-hint" type="text" placeholder="คำใบ้สั้น ๆ..." class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">คำอธิบายเฉลย (Feedback)</label>
+            <input id="t-explanation" type="text" placeholder="อธิบายเหตุผลของคำตอบที่ถูกต้อง..." class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs sm:text-sm" />
+          </div>
+          <div class="flex items-center gap-2 pt-1">
+            <button onclick="saveTeacherQuestion()" class="btn-neon-cyan px-4 py-2 rounded-lg text-xs sm:text-sm font-bold text-white">
+              💾 บันทึกโจทย์
+            </button>
+            <button onclick="clearTeacherForm()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">
+              ล้างฟอร์ม
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-box" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-900/95 border border-cyan-400/50 text-cyan-200 text-xs sm:text-sm shadow-xl"></div>
+
+  <!-- ==================== JAVASCRIPT GAME ENGINE ==================== -->
+  <script>
+    /*************************************************************************
+     * 1. SOUND ENGINE (Web Audio API - Zero External URLs)
+     *************************************************************************/
+    let soundEnabled = true;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, volume = 0.12, delay = 0) {
+      if (!soundEnabled) return;
+      try {
+        initAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+        gain.gain.setValueAtTime(volume, audioCtx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + delay);
+        osc.stop(audioCtx.currentTime + delay + duration);
+      } catch (e) { /* Ignore audio errors */ }
+    }
+
+    const SFX = {
+      click: () => playTone(520, 'triangle', 0.06, 0.08),
+      crit: () => {
+        playTone(440, 'sawtooth', 0.09, 0.12, 0);
+        playTone(660, 'square', 0.11, 0.12, 0.06);
+        playTone(880, 'triangle', 0.18, 0.14, 0.12);
+      },
+      hit: () => {
+        playTone(170, 'sawtooth', 0.18, 0.16, 0);
+        playTone(110, 'square', 0.22, 0.14, 0.08);
+      },
+      heal: () => {
+        playTone(523, 'sine', 0.12, 0.12, 0);
+        playTone(659, 'sine', 0.14, 0.12, 0.08);
+        playTone(784, 'sine', 0.2, 0.12, 0.16);
+      },
+      rankUp: () => {
+        [523, 659, 784, 1046].forEach((f, i) => playTone(f, 'triangle', 0.22, 0.14, i * 0.09));
+      }
+    };
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('sound-icon').textContent = soundEnabled ? '🔊' : '🔇';
+      showToast(soundEnabled ? 'เปิดเสียงเอฟเฟกต์แล้ว' : 'ปิดเสียงเอฟเฟกต์แล้ว');
+    }
+
+    /*************************************************************************
+     * 2. CUSTOM SVG MONSTERS (Dark Fantasy + Neon Hunter)
+     *************************************************************************/
+    const ENEMY_SVGS = {
+      1: `<svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-[0_0_16px_rgba(6,182,212,0.55)]">
+        <defs>
+          <linearGradient id="goblinSkin" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#10b981"/>
+            <stop offset="100%" stop-color="#065f46"/>
+          </linearGradient>
+        </defs>
+        <rect x="35" y="45" width="130" height="6" fill="#06b6d4" opacity="0.35"/>
+        <rect x="45" y="145" width="110" height="5" fill="#a855f7" opacity="0.4"/>
+        <polygon points="50,90 15,65 45,112" fill="url(#goblinSkin)" stroke="#34d399" stroke-width="2"/>
+        <polygon points="150,90 185,65 155,112" fill="url(#goblinSkin)" stroke="#34d399" stroke-width="2"/>
+        <path d="M55,130 Q100,115 145,130 L155,180 L45,180 Z" fill="#1e1b4b" stroke="#06b6d4" stroke-width="2"/>
+        <ellipse cx="100" cy="95" rx="48" ry="44" fill="url(#goblinSkin)" stroke="#6ee7b7" stroke-width="2.5"/>
+        <polygon points="72,88 92,94 76,102" fill="#06b6d4"/>
+        <polygon points="128,88 108,94 124,102" fill="#06b6d4"/>
+        <path d="M78,116 Q100,130 122,116" fill="none" stroke="#052e16" stroke-width="4" stroke-linecap="round"/>
+        <polygon points="86,118 90,126 94,119" fill="#fef08a"/>
+        <polygon points="106,119 110,126 114,118" fill="#fef08a"/>
+        <text x="100" y="68" text-anchor="middle" fill="#22d3ee" font-family="monospace" font-size="14" font-weight="bold">01#ERR</text>
+      </svg>`,
+
+      2: `<svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-[0_0_18px_rgba(168,85,247,0.65)]">
+        <defs>
+          <radialGradient id="slimeGrad" cx="45%" cy="35%" r="60%">
+            <stop offset="0%" stop-color="#c084fc"/>
+            <stop offset="60%" stop-color="#7e22ce"/>
+            <stop offset="100%" stop-color="#3b0764"/>
+          </radialGradient>
+        </defs>
+        <path d="M35,145 C30,85 55,48 100,48 C145,48 170,85 165,145 C162,168 140,175 100,175 C60,175 38,168 35,145 Z"
+              fill="url(#slimeGrad)" stroke="#38bdf8" stroke-width="3" opacity="0.92"/>
+        <ellipse cx="72" cy="78" rx="14" ry="8" transform="rotate(-25 72 78)" fill="#ffffff" opacity="0.4"/>
+        <path d="M72,118 C72,102 92,102 100,118 C108,134 128,134 128,118 C128,102 108,102 100,118 C92,134 72,134 72,118 Z"
+              fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="76" cy="95" r="7" fill="#fef08a"/>
+        <circle cx="124" cy="95" r="7" fill="#fef08a"/>
+        <circle cx="76" cy="95" r="3" fill="#0f172a"/>
+        <circle cx="124" cy="95" r="3" fill="#0f172a"/>
+      </svg>`,
+
+      3: `<svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-[0_0_18px_rgba(245,158,11,0.55)]">
+        <defs>
+          <linearGradient id="stoneGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#475569"/>
+            <stop offset="100%" stop-color="#1e293b"/>
+          </linearGradient>
+        </defs>
+        <polygon points="25,95 60,72 60,145 25,135" fill="url(#stoneGrad)" stroke="#f59e0b" stroke-width="2.5"/>
+        <polygon points="175,95 140,72 140,145 175,135" fill="url(#stoneGrad)" stroke="#f59e0b" stroke-width="2.5"/>
+        <polygon points="55,75 145,75 135,175 65,175" fill="url(#stoneGrad)" stroke="#38bdf8" stroke-width="2.5"/>
+        <polygon points="72,32 128,32 135,75 65,75" fill="#334155" stroke="#f59e0b" stroke-width="2.5"/>
+        <rect x="78" y="48" width="44" height="10" rx="4" fill="#06b6d4"/>
+        <polygon points="100,94 124,118 100,142 76,118" fill="#0f172a" stroke="#f59e0b" stroke-width="3"/>
+        <text x="100" y="122" text-anchor="middle" fill="#fbbf24" font-family="monospace" font-size="13" font-weight="bold">IF?</text>
+      </svg>`,
+
+      4: `<svg viewBox="0 0 220 200" class="w-full h-full drop-shadow-[0_0_24px_rgba(239,68,68,0.65)]">
+        <defs>
+          <linearGradient id="dragonWing" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7f1d1d"/>
+            <stop offset="100%" stop-color="#312e81"/>
+          </linearGradient>
+          <linearGradient id="dragonHead" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1e1b4b"/>
+            <stop offset="100%" stop-color="#0f172a"/>
+          </linearGradient>
+        </defs>
+        <polygon points="110,95 15,35 30,125 80,120" fill="url(#dragonWing)" stroke="#ef4444" stroke-width="2"/>
+        <polygon points="110,95 205,35 190,125 140,120" fill="url(#dragonWing)" stroke="#ef4444" stroke-width="2"/>
+        <polygon points="82,62 58,20 94,52" fill="#f59e0b"/>
+        <polygon points="138,62 162,20 126,52" fill="#f59e0b"/>
+        <polygon points="75,55 145,55 155,115 110,155 65,115" fill="url(#dragonHead)" stroke="#a855f7" stroke-width="3"/>
+        <polygon points="110,64 118,78 110,92 102,78" fill="#06b6d4"/>
+        <polygon points="80,92 100,100 84,108" fill="#ef4444"/>
+        <polygon points="140,92 120,100 136,108" fill="#ef4444"/>
+        <polygon points="94,132 100,146 106,134" fill="#fef08a"/>
+        <polygon points="114,134 120,146 126,132" fill="#fef08a"/>
+        <circle cx="110" cy="172" r="12" fill="#f59e0b" opacity="0.45"/>
+        <circle cx="110" cy="172" r="6" fill="#fef08a"/>
+      </svg>`
+    };
+
+    /*************************************************************************
+     * 3. STAGE METADATA & DEFAULT QUESTIONS (Bloom's Taxonomy)
+     *************************************************************************/
+    const STAGES_META = [
+      {
+        id: 1,
+        name: 'ด่าน 1: โถงแห่งความจำ',
+        enemyName: 'Glitch Goblin',
+        roleTag: 'มอนสเตอร์พื้นฐาน',
+        bloomGroup: 'remember_understand',
+        bloomLabel: 'ความจำ (แนวคิดเชิงคำนวณ)',
+        topicName: 'การแบ่งย่อยปัญหาและการหารูปแบบ',
+        expReward: 40,
+        coinReward: 25
+      },
+      {
+        id: 2,
+        name: 'ด่าน 2: ป่าแห่งความเข้าใจ',
+        enemyName: 'Loop Slime',
+        roleTag: 'มอนสเตอร์ผังงาน',
+        bloomGroup: 'remember_understand',
+        bloomLabel: 'ความเข้าใจ (ผังงานและวนซ้ำ)',
+        topicName: 'สัญลักษณ์ผังงาน เงื่อนไข และการวนซ้ำ',
+        expReward: 50,
+        coinReward: 35
+      },
+      {
+        id: 3,
+        name: 'ด่าน 3: หอคอยมินิบอส',
+        enemyName: 'Logic Golem',
+        roleTag: 'มินิบอสประจำหอคอย',
+        bloomGroup: 'apply',
+        bloomLabel: 'การนำไปใช้ (อัลกอริทึม & Debug)',
+        topicName: 'การเรียงลำดับขั้นตอนและการหาจุดผิดพลาด',
+        expReward: 65,
+        coinReward: 50
+      },
+      {
+        id: 4,
+        name: 'ด่าน 4: บัลลังก์บอสประจำบท',
+        enemyName: 'Overlord Dragon',
+        roleTag: 'บอสใหญ่ประจำบท (3 เฟส)',
+        bloomGroup: 'analyze',
+        bloomLabel: 'การวิเคราะห์ (สถานการณ์จำลอง)',
+        topicName: 'การวิเคราะห์และออกแบบอัลกอริทึมแก้ปัญหา',
+        expReward: 85,
+        coinReward: 75
+      }
+    ];
+
+    const DEFAULT_QUESTIONS = {
+      1: [
+        {
+          q: 'การแตกปัญหาใหญ่ที่ซับซ้อนให้กลายเป็นปัญหาย่อย ๆ ที่จัดการได้ง่ายขึ้น ตรงกับองค์ประกอบใดของแนวคิดเชิงคำนวณ?',
+          options: ['การแบ่งย่อยปัญหา (Decomposition)', 'การหารูปแบบ (Pattern Recognition)', 'การคิดเชิงนามธรรม (Abstraction)', 'การออกแบบอัลกอริทึม (Algorithm)'],
+          correct: 0,
+          hint: 'สังเกตคำว่า "แตกปัญหาใหญ่ให้เป็นปัญหาย่อย"',
+          explanation: 'การแบ่งย่อยปัญหา (Decomposition) คือการแยกปัญหาใหญ่เป็นส่วนย่อย ๆ เพื่อให้วิเคราะห์และแก้ปัญหาได้ง่ายขึ้น'
+        },
+        {
+          q: 'หากเราสังเกตเห็นว่านักเรียนทุกคนต้องทำขั้นตอน "ตื่นนอน -> อาบน้ำ -> แต่งตัว -> ไปโรงเรียน" เหมือนกันทุกเช้า เป็นการใช้แนวคิดใด?',
+          options: ['การคิดเชิงนามธรรม', 'การหารูปแบบ (Pattern Recognition)', 'การเข้ารหัสข้อมูล', 'การวนซ้ำแบบไม่รู้จบ'],
+          correct: 1,
+          hint: 'เป็นการมองหาความเหมือนหรือสิ่งที่เกิดขึ้นซ้ำ ๆ',
+          explanation: 'การหารูปแบบ (Pattern Recognition) คือการสังเกตความคล้ายคลึงหรือรูปแบบที่เกิดขึ้นซ้ำ ๆ เพื่อนำไปสร้างวิธีแก้ปัญหาที่ใช้ซ้ำได้'
+        }
+      ],
+      2: [
+        {
+          q: 'ในผังงาน (Flowchart) สัญลักษณ์ "รูปสี่เหลี่ยมข้าวหลามตัด (Diamond)" ใช้แทนการทำงานใด?',
+          options: ['เริ่มต้นหรือสิ้นสุดโปรแกรม', 'การรับข้อมูลหรือแสดงผล', 'การตัดสินใจ / ตรวจสอบเงื่อนไข (Decision)', 'การประมวลผลคำนวณทั่วไป'],
+          correct: 2,
+          hint: 'สัญลักษณ์นี้มักมีทางแยกออก 2 ทาง คือ จริง (Yes) และ เท็จ (No)',
+          explanation: 'รูปสี่เหลี่ยมข้าวหลามตัด (Decision) ใช้สำหรับตรวจสอบเงื่อนไขเพื่อเลือกเส้นทางการทำงานตามผลลัพธ์ จริง หรือ เท็จ'
+        },
+        {
+          q: 'โครงสร้างการทำงานแบบใดที่เหมาะสมที่สุด หากต้องการสั่งให้หุ่นยนต์เดินไปข้างหน้าซ้ำ ๆ จนกว่าจะเจอผนัง?',
+          options: ['การทำงานแบบลำดับ (Sequence)', 'การทำงานแบบวนซ้ำ (Loop / Iteration)', 'การประกาศตัวแปร (Variable)', 'การเรียงลำดับข้อมูล (Sorting)'],
+          correct: 1,
+          hint: 'สังเกตคำว่า "ซ้ำ ๆ จนกว่าจะ..."',
+          explanation: 'การทำงานแบบวนซ้ำ (Loop) ช่วยให้โปรแกรมทำงานชุดเดิมซ้ำตามเงื่อนไขที่กำหนด เช่น ทำซ้ำจนกว่าจะพบผนัง'
+        }
+      ],
+      3: [
+        {
+          q: 'ลำดับขั้นตอน (อัลกอริทึม) ในการต้มบะหมี่กึ่งสำเร็จรูปข้อใดถูกต้องและสมเหตุสมผลที่สุด?',
+          options: [
+            'กินบะหมี่ -> ต้มน้ำให้เดือด -> ใส่เส้น -> ใส่เครื่องปรุง',
+            'ต้มน้ำให้เดือด -> ใส่เส้นและเครื่องปรุง -> รอ 3 นาที -> พร้อมรับประทาน',
+            'รอ 3 นาที -> ใส่เครื่องปรุง -> เปิดแก๊ส -> ต้มน้ำ',
+            'ใส่เส้นลงหม้อเปล่า -> ปิดแก๊ส -> เทน้ำเย็น -> พร้อมรับประทาน'
+          ],
+          correct: 1,
+          hint: 'อัลกอริทึมที่ดีต้องเรียงลำดับก่อน-หลังอย่างชัดเจนและทำตามได้จริง',
+          explanation: 'การเรียงลำดับขั้นตอนที่ถูกต้องต้องเริ่มจากต้มน้ำให้เดือด ใส่เส้นและเครื่องปรุง รอให้สุก แล้วจึงรับประทาน'
+        },
+        {
+          q: 'โค้ดตรวจสอบคะแนนสอบ: "ถ้า คะแนน >= 50 ให้แสดงผล สอบตก มิฉะนั้น ให้แสดงผล สอบผ่าน" จุดผิดพลาด (Bug) ของอัลกอริทึมนี้คืออะไร?',
+          options: [
+            'ไม่ได้กำหนดคะแนนเต็ม 100',
+            'สลับข้อความผลลัพธ์ระหว่าง สอบผ่าน และ สอบตก',
+            'ใช้เครื่องหมายมากกว่าหรือเท่ากับไม่ได้',
+            'ไม่มีจุดผิดพลาด ทำงานได้ถูกต้องแล้ว'
+          ],
+          correct: 1,
+          hint: 'ลองแทนค่า คะแนน = 80 ดูว่าโปรแกรมจะแสดงผลว่าอะไร',
+          explanation: 'เงื่อนไขคะแนน >= 50 ควรแสดงผล "สอบผ่าน" แต่โค้ดนี้เขียนสลับเป็น "สอบตก" จึงเป็นข้อผิดพลาดเชิงตรรกะ (Logic Error)'
+        }
+      ],
+      4: [
+        {
+          q: 'สถานการณ์: ระบบตู้กดน้ำอัตโนมัติต้องรับเหรียญ 10 บาท หากเงินครบ 10 บาทให้ปล่อยน้ำ แต่ถ้าไม่ครบให้รอรับเหรียญเพิ่ม ควรออกแบบโครงสร้างหลักอย่างไร?',
+          options: [
+            'ใช้การทำงานแบบลำดับเพียงอย่างเดียวโดยไม่ต้องตรวจสอบเงิน',
+            'ใช้ Loop วนรับเหรียญและบวกยอดสะสม พร้อมเงื่อนไขตรวจสอบว่ายอด >= 10 หรือยัง',
+            'สุ่มปล่อยน้ำทันทีเมื่อมีคนเดินผ่านตู้',
+            'ให้ตู้ปิดเครื่องทันทีเมื่อหยอดเหรียญ 5 บาท'
+          ],
+          correct: 1,
+          hint: 'ลูกค้าอาจหยอดเหรียญ 5 บาท 2 เหรียญ ระบบจึงต้องสะสมยอดและตรวจสอบซ้ำ',
+          explanation: 'การรวม Loop (รับเหรียญเพิ่ม) กับ Condition (ตรวจยอด >= 10) ทำให้ตู้รองรับการหยอดเหรียญหลายครั้งได้อย่างถูกต้อง'
+        },
+        {
+          q: 'สถานการณ์: ต้องการค้นหาชื่อนักเรียน 1 คน จากรายชื่อที่เรียงตามตัวอักษร ก-ฮ จำนวน 1,000 คน วิธีใดวิเคราะห์แล้วรวดเร็วที่สุด?',
+          options: [
+            'ไล่เปิดดูทีละชื่อตั้งแต่ชื่อที่ 1 ไปจนถึง 1,000',
+            'เปิดดูจากกลางเล่มแล้วตัดครึ่งที่ไม่เกี่ยวข้องทิ้งไปเรื่อย ๆ (Binary Search)',
+            'สุ่มจิ้มชื่อไปเรื่อย ๆ จนกว่าจะเจอ',
+            'นำรายชื่อทั้งหมดมาสลับลำดับใหม่ก่อนแล้วค่อยหา'
+          ],
+          correct: 1,
+          hint: 'เมื่อข้อมูล "เรียงลำดับไว้แล้ว" เราสามารถตัดข้อมูลออกทีละครึ่งได้',
+          explanation: 'Binary Search ใช้ประโยชน์จากข้อมูลที่เรียงลำดับแล้ว โดยแบ่งครึ่งช่วงการค้นหาทุกครั้ง ทำให้ค้นหา 1,000 รายการได้ในไม่เกิน 10 ครั้ง'
+        },
+        {
+          q: 'สถานการณ์บอสสุดท้าย: หุ่นยนต์ส่งของต้องเดินจากจุด A ไป B โดยมีสิ่งกีดขวางกลางทาง หากต้องการให้หุ่นยนต์ปรับตัวได้เอง ควรเพิ่มอัลกอริทึมใด?',
+          options: [
+            'สั่งให้เดินตรงไปเรื่อย ๆ ด้วยความเร็วสูงสุด',
+            'ใช้เซนเซอร์ตรวจจับสิ่งกีดขวาง + เงื่อนไขหลบหลีก แล้วคำนวณเส้นทางกลับสู่เป้าหมาย B',
+            'ให้หุ่นยนต์หยุดทำงานถาวรทันทีเมื่อเจอสิ่งกีดขวาง',
+            'ให้หุ่นยนต์เดินถอยหลังกลับจุด A ตลอดเวลา'
+          ],
+          correct: 1,
+          hint: 'หุ่นยนต์อัจฉริยะต้องรับข้อมูลสภาพแวดล้อม (Input) และตัดสินใจเปลี่ยนเส้นทางได้',
+          explanation: 'การใช้เซนเซอร์รับค่าสิ่งกีดขวางร่วมกับเงื่อนไขการหลบหลีกและคำนวณเส้นทางใหม่ ช่วยให้หุ่นยนต์ไปถึงจุดหมาย B ได้อย่างปลอดภัย'
+        }
+      ]
+    };
+
+    const STORAGE_KEY = 'dungeon_quest_questions_v1';
+
+    function loadQuestions() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed[1] && parsed[2] && parsed[3] && parsed[4]) return parsed;
+        }
+      } catch (e) { /* fallback */ }
+      return JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
+    }
+
+    function saveQuestionsToStorage(qObj) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(qObj));
+      } catch (e) { /* ignore */ }
+    }
+
+    let questionBank = loadQuestions();
+
+    /*************************************************************************
+     * 4. GAME STATE & RANK SYSTEM
+     *************************************************************************/
+    const CLASSES = {
+      knight:   { name: 'อัศวินตรรกะ', maxHp: 130, potion: 2, fifty: 1, hint: 1, expMult: 1.0 },
+      mage:     { name: 'จอมเวทโค้ด',   maxHp: 100, potion: 1, fifty: 2, hint: 3, expMult: 1.0 },
+      explorer: { name: 'นักสำรวจข้อมูล', maxHp: 110, potion: 1, fifty: 1, hint: 2, expMult: 1.3 }
+    };
+
+    const RANKS = [
+      { letter: 'E', minExp: 0 },
+      { letter: 'D', minExp: 80 },
+      { letter: 'C', minExp: 170 },
+      { letter: 'B', minExp: 280 },
+      { letter: 'A', minExp: 400 },
+      { letter: 'S', minExp: 520 }
+    ];
+
+    let state = {
+      playerName: '',
+      classKey: 'knight',
+      hp: 130,
+      maxHp: 130,
+      exp: 0,
+      coins: 0,
+      rank: 'E',
+      skills: { potion: 2, fifty: 1, hint: 1 },
+      unlockedStage: 1,
+      clearedStages: [],
+      currentStageId: 1,
+      currentQIndex: 0,
+      enemyHp: 2,
+      enemyMaxHp: 2,
+      answeredCurrent: false,
+      used5050ThisQ: false,
+      stats: {
+        totalAnswered: 0,
+        totalCorrect: 0,
+        bloom: {
+          remember_understand: { correct: 0, total: 0 },
+          apply: { correct: 0, total: 0 },
+          analyze: { correct: 0, total: 0 }
+        }
+      }
+    };
+
+    function computeRank(exp) {
+      let r = 'E';
+      for (const item of RANKS) {
+        if (exp >= item.minExp) r = item.letter;
+      }
+      return r;
+    }
+
+    function getNextRankExp(exp) {
+      for (const item of RANKS) {
+        if (exp < item.minExp) return item.minExp;
+      }
+      return RANKS[RANKS.length - 1].minExp;
+    }
+
+    /*************************************************************************
+     * 5. ONBOARDING & NAVIGATION
+     *************************************************************************/
+    function selectClass(key) {
+      SFX.click();
+      state.classKey = key;
+      document.querySelectorAll('.class-card').forEach(card => {
+        const isSelected = card.dataset.class === key;
+        card.classList.toggle('border-cyan-400', isSelected);
+        card.classList.toggle('bg-cyan-950/30', isSelected);
+        card.classList.toggle('border-slate-700', !isSelected);
+      });
+    }
+
+    function startGame() {
+      const nameInput = document.getElementById('input-player-name');
+      const errEl = document.getElementById('name-error');
+      const name = nameInput.value.trim();
+      if (!name) {
+        errEl.classList.remove('hidden');
+        nameInput.focus();
+        return;
+      }
+      errEl.classList.add('hidden');
+      SFX.rankUp();
+
+      const cls = CLASSES[state.classKey];
+      state.playerName = name;
+      state.maxHp = cls.maxHp;
+      state.hp = cls.maxHp;
+      state.exp = 0;
+      state.coins = 0;
+      state.rank = 'E';
+      state.skills = { potion: cls.potion, fifty: cls.fifty, hint: cls.hint };
+      state.unlockedStage = 1;
+      state.clearedStages = [];
+      state.stats = {
+        totalAnswered: 0,
+        totalCorrect: 0,
+        bloom: {
+          remember_understand: { correct: 0, total: 0 },
+          apply: { correct: 0, total: 0 },
+          analyze: { correct: 0, total: 0 }
+        }
+      };
+
+      document.getElementById('top-hud').classList.remove('hidden');
+      updateHUD();
+      showScreen('screen-map');
+      renderDungeonMap();
+    }
+
+    function showScreen(screenId) {
+      ['screen-onboarding', 'screen-map', 'screen-combat', 'screen-report'].forEach(id => {
+        document.getElementById(id).classList.toggle('hidden', id !== screenId);
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateHUD() {
+      const cls = CLASSES[state.classKey];
+      document.getElementById('hud-player-name').textContent = state.playerName;
+      document.getElementById('hud-class-badge').textContent = cls.name;
+      document.getElementById('hud-rank-letter').textContent = state.rank;
+      document.getElementById('hud-coins').textContent = state.coins;
+
+      const hpPct = Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100));
+      document.getElementById('hud-hp-bar').style.width = `${hpPct}%`;
+      document.getElementById('hud-hp-text').textContent = `${state.hp}/${state.maxHp}`;
+
+      const nextExp = getNextRankExp(state.exp);
+      const expPct = state.rank === 'S' ? 100 : Math.min(100, (state.exp / nextExp) * 100);
+      document.getElementById('hud-exp-bar').style.width = `${expPct}%`;
+      document.getElementById('hud-exp-text').textContent = `${state.exp} EXP`;
+    }
+
+    /*************************************************************************
+     * 6. DUNGEON MAP RENDERING
+     *************************************************************************/
+    function renderDungeonMap() {
+      const grid = document.getElementById('dungeon-stages-grid');
+      grid.innerHTML = '';
+
+      STAGES_META.forEach(stage => {
+        const isUnlocked = stage.id <= state.unlockedStage;
+        const isCleared = state.clearedStages.includes(stage.id);
+        const qCount = (questionBank[stage.id] || []).length;
+
+        const card = document.createElement('div');
+        card.className = `rounded-2xl p-5 border transition-all flex flex-col justify-between gap-4 ${
+          isCleared
+            ? 'hunter-panel border-emerald-500/45'
+            : isUnlocked
+              ? 'hunter-panel-purple border-cyan-400/60 shadow-[0_0_24px_rgba(6,182,212,0.16)]'
+              : 'bg-slate-900/50 border-slate-800 opacity-60'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-[11px] px-2.5 py-0.5 rounded-full font-medium ${
+                  isCleared ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
+                  : isUnlocked ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                  : 'bg-slate-800 text-slate-400'
+                }">
+                  ${isCleared ? '✅ พิชิตแล้ว' : isUnlocked ? '⚔️ พร้อมเข้าต่อสู้' : '🔒 ล็อกอยู่'}
+                </span>
+                <span class="text-[11px] text-purple-300">${stage.bloomLabel}</span>
+              </div>
+              <h3 class="text-lg font-bold text-white">${stage.name}</h3>
+              <p class="text-xs text-slate-400">ศัตรู: <strong class="text-rose-300">${stage.enemyName}</strong> (${qCount} ข้อ)</p>
+              <p class="text-xs text-slate-400">หัวข้อ: ${stage.topicName}</p>
+            </div>
+            <div class="w-16 h-16 shrink-0 rounded-xl bg-slate-950/80 border border-slate-700/70 p-1.5 flex items-center justify-center">
+              ${ENEMY_SVGS[stage.id]}
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-slate-700/50">
+            <div class="text-[11px] text-amber-300">รางวัล: +${stage.expReward} EXP / +${stage.coinReward} 🪙</div>
+            <button ${!isUnlocked ? 'disabled' : ''} onclick="enterStage(${stage.id})"
+              class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition ${
+                isUnlocked
+                  ? 'btn-neon-cyan text-white'
+                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+              }">
+              ${isCleared ? 'เล่นซ้ำ' : 'เข้าดันเจี้ยน ⚔️'}
+            </button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function returnToMap() {
+      SFX.click();
+      showScreen('screen-map');
+      renderDungeonMap();
+    }
+
+    /*************************************************************************
+     * 7. TURN-BASED COMBAT ENGINE
+     *************************************************************************/
+    function enterStage(stageId) {
+      const qList = questionBank[stageId] || [];
+      if (qList.length === 0) {
+        showToast('ด่านนี้ยังไม่มีคำถาม กรุณาเพิ่มโจทย์ในโหมดผู้สอน');
+        return;
+      }
+      SFX.click();
+      state.currentStageId = stageId;
+      state.currentQIndex = 0;
+      state.enemyMaxHp = qList.length;
+      state.enemyHp = qList.length;
+      state.answeredCurrent = false;
+
+      const meta = STAGES_META.find(s => s.id === stageId);
+      document.getElementById('combat-stage-title').textContent = meta.name;
+      document.getElementById('combat-bloom-badge').textContent = `ระดับ: ${meta.bloomLabel}`;
+      document.getElementById('enemy-role-tag').textContent = meta.roleTag;
+      document.getElementById('enemy-name').textContent = meta.enemyName;
+      document.getElementById('enemy-svg-wrapper').innerHTML = ENEMY_SVGS[stageId];
+
+      showScreen('screen-combat');
+      renderEnemyHp();
+      renderSkillButtons();
+      renderQuestion();
+    }
+
+    function renderEnemyHp() {
+      const container = document.getElementById('enemy-hp-container');
+      container.innerHTML = '';
+      for (let i = 0; i < state.enemyMaxHp; i++) {
+        const seg = document.createElement('div');
+        const filled = i < state.enemyHp;
+        seg.className = `flex-1 h-full rounded-full transition-all duration-300 ${
+          filled ? 'bg-gradient-to-r from-rose-600 via-rose-500 to-amber-400 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-slate-800/80'
+        }`;
+        container.appendChild(seg);
+      }
+      document.getElementById('enemy-hp-text').textContent = `${state.enemyHp} / ${state.enemyMaxHp}`;
+    }
+
+    function renderSkillButtons() {
+      document.getElementById('count-potion').textContent = `x${state.skills.potion}`;
+      document.getElementById('count-5050').textContent = `x${state.skills.fifty}`;
+      document.getElementById('count-hint').textContent = `x${state.skills.hint}`;
+
+      document.getElementById('btn-skill-potion').disabled = state.skills.potion <= 0 || state.hp >= state.maxHp;
+      document.getElementById('btn-skill-5050').disabled = state.skills.fifty <= 0 || state.answeredCurrent || state.used5050ThisQ;
+      document.getElementById('btn-skill-hint').disabled = state.skills.hint <= 0 || state.answeredCurrent;
+    }
+
+    function renderQuestion() {
+      const qList = questionBank[state.currentStageId];
+      const qObj = qList[state.currentQIndex];
+      state.answeredCurrent = false;
+      state.used5050ThisQ = false;
+
+      document.getElementById('combat-q-num').textContent = state.currentQIndex + 1;
+      document.getElementById('combat-q-total').textContent = qList.length;
+      document.getElementById('combat-question-text').textContent = qObj.q;
+
+      document.getElementById('combat-hint-box').classList.add('hidden');
+      document.getElementById('combat-feedback-box').classList.add('hidden');
+
+      const optGrid = document.getElementById('combat-options-grid');
+      optGrid.innerHTML = '';
+      const labels = ['ก', 'ข', 'ค', 'ง'];
+
+      qObj.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.id = `opt-btn-${idx}`;
+        btn.onclick = () => submitAnswer(idx);
+        btn.className = 'option-btn text-left p-3.5 sm:p-4 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-cyan-400 text-sm sm:text-base text-slate-100 transition flex items-start gap-3';
+        btn.innerHTML = `
+          <span class="shrink-0 w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 font-bold text-xs flex items-center justify-center mt-0.5">${labels[idx]}</span>
+          <span class="leading-snug">${optText}</span>
+        `;
+        optGrid.appendChild(btn);
+      });
+
+      renderSkillButtons();
+    }
+
+    function spawnFloatingText(text, colorClass) {
+      const layer = document.getElementById('damage-layer');
+      const el = document.createElement('div');
+      el.className = `damage-float font-hud text-xl sm:text-2xl font-black ${colorClass}`;
+      el.textContent = text;
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 1100);
+    }
+
+    function submitAnswer(selectedIdx) {
+      if (state.answeredCurrent) return;
+      state.answeredCurrent = true;
+
+      const meta = STAGES_META.find(s => s.id === state.currentStageId);
+      const qList = questionBank[state.currentStageId];
+      const qObj = qList[state.currentQIndex];
+      const isCorrect = selectedIdx === qObj.correct;
+
+      state.stats.totalAnswered++;
+      state.stats.bloom[meta.bloomGroup].total++;
+
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`opt-btn-${i}`);
+        if (!btn) continue;
+        btn.disabled = true;
+        if (i === qObj.correct) {
+          btn.classList.add('border-emerald-400', 'bg-emerald-950/60', 'text-emerald-200');
+        } else if (i === selectedIdx && !isCorrect) {
+          btn.classList.add('border-rose-500', 'bg-rose-950/60', 'text-rose-200');
+        } else {
+          btn.classList.add('opacity-45');
+        }
+      }
+
+      const fbBox = document.getElementById('combat-feedback-box');
+      const fbIcon = document.getElementById('feedback-icon');
+      const fbTitle = document.getElementById('feedback-title');
+      const fbExp = document.getElementById('feedback-explanation');
+
+      fbBox.classList.remove('hidden', 'bg-emerald-950/50', 'border-emerald-500/50', 'bg-rose-950/50', 'border-rose-500/50');
+
+      if (isCorrect) {
+        SFX.crit();
+        state.stats.totalCorrect++;
+        state.stats.bloom[meta.bloomGroup].correct++;
+        state.enemyHp = Math.max(0, state.enemyHp - 1);
+
+        const mult = CLASSES[state.classKey].expMult;
+        const gainedExp = Math.round(meta.expReward * mult);
+        const gainedCoins = Math.round(meta.coinReward * mult);
+        const oldRank = state.rank;
+        state.exp += gainedExp;
+        state.coins += gainedCoins;
+        state.rank = computeRank(state.exp);
+
+        const enemyWrap = document.getElementById('enemy-svg-wrapper');
+        enemyWrap.classList.remove('animate-enemy-hit');
+        void enemyWrap.offsetWidth;
+        enemyWrap.classList.add('animate-enemy-hit');
+        spawnFloatingText('CRITICAL HIT!', 'text-amber-300 neon-text-gold');
+
+        if (state.rank !== oldRank) {
+          setTimeout(() => {
+            SFX.rankUp();
+            showToast(`🎉 เลื่อนระดับเป็น RANK ${state.rank} แล้ว!`);
+          }, 300);
+        }
+
+        fbBox.classList.add('bg-emerald-950/50', 'border-emerald-500/50');
+        fbIcon.textContent = '⚔️';
+        fbTitle.textContent = `โจมตีติด Critical! (+${gainedExp} EXP, +${gainedCoins} 🪙)`;
+        fbTitle.className = 'font-bold text-base text-emerald-300';
+      } else {
+        SFX.hit();
+        const dmg = state.currentStageId === 4 ? 25 : 20;
+        state.hp = Math.max(0, state.hp - dmg);
+
+        const arena = document.getElementById('combat-arena');
+        arena.classList.remove('animate-screen-shake');
+        void arena.offsetWidth;
+        arena.classList.add('animate-screen-shake');
+        spawnFloatingText(`-${dmg} HP`, 'text-rose-400');
+
+        fbBox.classList.add('bg-rose-950/50', 'border-rose-500/50');
+        fbIcon.textContent = '💥';
+        fbTitle.textContent = `โดนศัตรูโจมตีสวน! (-${dmg} HP) — มาเรียนรู้คำตอบที่ถูกกัน`;
+        fbTitle.className = 'font-bold text-base text-rose-300';
+      }
+
+      fbExp.textContent = qObj.explanation;
+      renderEnemyHp();
+      updateHUD();
+      renderSkillButtons();
+    }
+
+    function nextQuestion() {
+      SFX.click();
+      if (state.hp <= 0) {
+        showOverlayModal(
+          '💀',
+          'พ่ายแพ้ในดันเจี้ยน!',
+          'พลังชีวิตของคุณหมดลงแล้ว แต่ทุกความผิดพลาดคือบทเรียน คุณสามารถฟื้นพลังเพื่อท้าทายด่านนี้อีกครั้งได้ทันที',
+          [
+            { text: '🧪 ฟื้นพลังและสู้ด่านนี้ใหม่', cls: 'btn-neon-cyan text-white', fn: () => {
+              state.hp = state.maxHp;
+              updateHUD();
+              closeOverlayModal();
+              enterStage(state.currentStageId);
+            }},
+            { text: '📊 ดูรายงานผล', cls: 'bg-slate-800 text-slate-200 border border-slate-600', fn: () => {
+              closeOverlayModal();
+              showReportScreen();
+            }}
+          ]
+        );
+        return;
+      }
+
+      const qList = questionBank[state.currentStageId];
+      if (state.currentQIndex + 1 < qList.length) {
+        state.currentQIndex++;
+        renderQuestion();
+      } else {
+        SFX.rankUp();
+        if (!state.clearedStages.includes(state.currentStageId)) {
+          state.clearedStages.push(state.currentStageId);
+        }
+        if (state.currentStageId < 4 && state.unlockedStage <= state.currentStageId) {
+          state.unlockedStage = state.currentStageId + 1;
+        }
+        state.skills.potion += 1;
+
+        const isFinalBoss = state.currentStageId === 4;
+        showOverlayModal(
+          isFinalBoss ? '👑' : '🏆',
+          isFinalBoss ? 'พิชิต Overlord Dragon สำเร็จ!' : 'พิชิตด่านสำเร็จ!',
+          isFinalBoss
+            ? 'สุดยอดมาก! คุณผ่านครบทั้ง 4 ดันเจี้ยนแห่งอัลกอริทึมแล้ว ไปดูรายงานผลการเรียนรู้ (Learning Analytics) ของคุณกันเลย'
+            : 'คุณกำจัดศัตรูประจำด่านได้สำเร็จ! ได้รับโบนัส ยาฟื้นพลัง +1 ขวด และปลดล็อกด่านถัดไปแล้ว',
+          isFinalBoss
+            ? [{ text: '📜 ดูรายงานผลการเรียนรู้', cls: 'btn-neon-cyan text-white', fn: () => { closeOverlayModal(); showReportScreen(); }}]
+            : [{ text: '🗺️ กลับสู่แผนที่ดันเจี้ยน', cls: 'btn-neon-cyan text-white', fn: () => { closeOverlayModal(); returnToMap(); }}]
+        );
+      }
+    }
+
+    /*************************************************************************
+     * 8. SKILLS / ITEMS
+     *************************************************************************/
+    function usePotion() {
+      if (state.skills.potion <= 0 || state.hp >= state.maxHp) return;
+      SFX.heal();
+      state.skills.potion--;
+      state.hp = Math.min(state.maxHp, state.hp + 30);
+      spawnFloatingText('+30 HP', 'text-emerald-300');
+      updateHUD();
+      renderSkillButtons();
+      showToast('ใช้ยาฟื้นพลังสำเร็จ (+30 HP)');
+    }
+
+    function useFiftyFifty() {
+      if (state.skills.fifty <= 0 || state.answeredCurrent || state.used5050ThisQ) return;
+      SFX.click();
+      state.skills.fifty--;
+      state.used5050ThisQ = true;
+
+      const qObj = questionBank[state.currentStageId][state.currentQIndex];
+      const wrongIndices = [0, 1, 2, 3].filter(i => i !== qObj.correct);
+      wrongIndices.sort(() => Math.random() - 0.5);
+      wrongIndices.slice(0, 2).forEach(idx => {
+        const btn = document.getElementById(`opt-btn-${idx}`);
+        if (btn) {
+          btn.disabled = true;
+          btn.classList.add('opacity-20', 'line-through');
+        }
+      });
+      renderSkillButtons();
+      showToast('ใช้สกิล 50/50 ตัดตัวเลือกผิดออก 2 ข้อแล้ว!');
+    }
+
+    function useHint() {
+      if (state.skills.hint <= 0 || state.answeredCurrent) return;
+      SFX.heal();
+      state.skills.hint--;
+      const qObj = questionBank[state.currentStageId][state.currentQIndex];
+      document.getElementById('combat-hint-text').textContent = qObj.hint || 'ลองวิเคราะห์คีย์เวิร์ดสำคัญในโจทย์อีกครั้ง';
+      document.getElementById('combat-hint-box').classList.remove('hidden');
+      renderSkillButtons();
+    }
+
+    /*************************************************************************
+     * 9. LEARNING ANALYTICS / REPORT CARD
+     *************************************************************************/
+    function showReportScreen() {
+      SFX.rankUp();
+      showScreen('screen-report');
+
+      const total = state.stats.totalAnswered;
+      const correct = state.stats.totalCorrect;
+      const acc = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+      document.getElementById('report-rank').textContent = state.rank;
+      document.getElementById('report-player-summary').textContent =
+        `นักล่า: ${state.playerName} (${CLASSES[state.classKey].name}) | พิชิตแล้ว ${state.clearedStages.length}/4 ด่าน`;
+      document.getElementById('report-score').textContent = `${correct} / ${total}`;
+      document.getElementById('report-accuracy').textContent = `${acc}%`;
+      document.getElementById('report-exp').textContent = state.exp;
+      document.getElementById('report-coins').textContent = state.coins;
+
+      const bloomConfig = [
+        { key: 'remember_understand', label: 'ระดับจำ / เข้าใจ (ด่าน 1–2: แนวคิดเชิงคำนวณ & ผังงาน)', color: 'from-cyan-500 to-blue-500' },
+        { key: 'apply', label: 'ระดับนำไปใช้ (ด่าน 3: อัลกอริทึม & Debug)', color: 'from-purple-500 to-fuchsia-500' },
+        { key: 'analyze', label: 'ระดับวิเคราะห์ (ด่าน 4: สถานการณ์จำลอง)', color: 'from-amber-500 to-orange-500' }
+      ];
+
+      const barsContainer = document.getElementById('report-bloom-bars');
+      barsContainer.innerHTML = '';
+      const strengths = [];
+      const reviews = [];
+
+      bloomConfig.forEach(item => {
+        const data = state.stats.bloom[item.key];
+        const pct = data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0;
+
+        if (data.total > 0) {
+          if (pct >= 75) strengths.push(`${item.label} (แม่นยำ ${pct}%)`);
+          else reviews.push(`${item.label} (ได้ ${data.correct}/${data.total} ข้อ)`);
+        } else {
+          reviews.push(`ยังไม่ได้ทำโจทย์ใน${item.label}`);
+        }
+
+        barsContainer.innerHTML += `
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs">
+              <span class="text-slate-200">${item.label}</span>
+              <span class="font-hud text-cyan-300">${data.correct}/${data.total} (${pct}%)</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r ${item.color} transition-all duration-500" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      const strEl = document.getElementById('report-strengths');
+      const revEl = document.getElementById('report-review');
+      strEl.innerHTML = strengths.length
+        ? strengths.map(s => `<li>${s}</li>`).join('')
+        : '<li>มีความพยายามในการเรียนรู้และกล้าทดลองแก้ปัญหา!</li>';
+      revEl.innerHTML = reviews.length
+        ? reviews.map(r => `<li>${r}</li>`).join('')
+        : '<li>ทำได้ยอดเยี่ยมครบทุกระดับการเรียนรู้แล้ว!</li>';
+    }
+
+    function resetAndReplay() {
+      SFX.click();
+      document.getElementById('top-hud').classList.add('hidden');
+      showScreen('screen-onboarding');
+    }
+
+    /*************************************************************************
+     * 10. TEACHER QUESTION MANAGER (LocalStorage)
+     *************************************************************************/
+    function openTeacherModal() {
+      SFX.click();
+      document.getElementById('modal-teacher').classList.remove('hidden');
+      renderTeacherQuestionList();
+    }
+
+    function closeTeacherModal() {
+      document.getElementById('modal-teacher').classList.add('hidden');
+      clearTeacherForm();
+    }
+
+    function renderTeacherQuestionList() {
+      const stageId = document.getElementById('teacher-stage-select').value;
+      const list = questionBank[stageId] || [];
+      const container = document.getElementById('teacher-question-list');
+      container.innerHTML = '';
+
+      if (list.length === 0) {
+        container.innerHTML = '<div class="text-xs text-slate-400 text-center py-4">ยังไม่มีโจทย์ในด่านนี้</div>';
+        return;
+      }
+
+      list.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'p-3 rounded-xl bg-slate-900/80 border border-slate-700/80 flex items-start justify-between gap-3';
+        row.innerHTML = `
+          <div class="space-y-1 flex-1">
+            <div class="text-xs sm:text-sm font-medium text-white">${idx + 1}. ${item.q}</div>
+            <div class="text-[11px] text-emerald-300">เฉลย: ${item.options[item.correct]}</div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="editTeacherQuestion(${idx})" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-300 text-xs">แก้ไข</button>
+            <button onclick="deleteTeacherQuestion(${idx})" class="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 text-xs">ลบ</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function editTeacherQuestion(idx) {
+      const stageId = document.getElementById('teacher-stage-select').value;
+      const item = questionBank[stageId][idx];
+      document.getElementById('edit-q-index').value = idx;
+      document.getElementById('teacher-form-title').textContent = `✏️ กำลังแก้ไขโจทย์ข้อที่ ${idx + 1}`;
+      document.getElementById('t-q-text').value = item.q;
+      for (let i = 0; i < 4; i++) document.getElementById(`t-opt-${i}`).value = item.options[i] || '';
+      document.getElementById('t-correct').value = item.correct;
+      document.getElementById('t-hint').value = item.hint || '';
+      document.getElementById('t-explanation').value = item.explanation || '';
+    }
+
+    function saveTeacherQuestion() {
+      const stageId = document.getElementById('teacher-stage-select').value;
+      const q = document.getElementById('t-q-text').value.trim();
+      const options = [0, 1, 2, 3].map(i => document.getElementById(`t-opt-${i}`).value.trim());
+      const correct = parseInt(document.getElementById('t-correct').value, 10);
+      const hint = document.getElementById('t-hint').value.trim();
+      const explanation = document.getElementById('t-explanation').value.trim();
+
+      if (!q || options.some(o => !o)) {
+        showToast('กรุณากรอกคำถามและตัวเลือกให้ครบทั้ง 4 ข้อ');
+        return;
+      }
+
+      const newObj = { q, options, correct, hint: hint || 'ลองวิเคราะห์จากโจทย์อีกครั้ง', explanation: explanation || 'คำตอบนี้ถูกต้องตามหลักการ' };
+      const editIdx = parseInt(document.getElementById('edit-q-index').value, 10);
+
+      if (editIdx >= 0) {
+        questionBank[stageId][editIdx] = newObj;
+        showToast('อัปเดตโจทย์เรียบร้อยแล้ว!');
+      } else {
+        questionBank[stageId].push(newObj);
+        showToast('เพิ่มโจทย์ใหม่เรียบร้อยแล้ว!');
+      }
+
+      saveQuestionsToStorage(questionBank);
+      clearTeacherForm();
+      renderTeacherQuestionList();
+      if (!document.getElementById('screen-map').classList.contains('hidden')) {
+        renderDungeonMap();
+      }
+    }
+
+    function deleteTeacherQuestion(idx) {
+      const stageId = document.getElementById('teacher-stage-select').value;
+      if (questionBank[stageId].length <= 1) {
+        showToast('ต้องมีโจทย์อย่างน้อย 1 ข้อในแต่ละด่าน');
+        return;
+      }
+      questionBank[stageId].splice(idx, 1);
+      saveQuestionsToStorage(questionBank);
+      renderTeacherQuestionList();
+      showToast('ลบโจทย์เรียบร้อยแล้ว');
+    }
+
+    function clearTeacherForm() {
+      document.getElementById('edit-q-index').value = '-1';
+      document.getElementById('teacher-form-title').textContent = '➕ เพิ่มโจทย์ใหม่ในด่านนี้';
+      document.getElementById('t-q-text').value = '';
+      for (let i = 0; i < 4; i++) document.getElementById(`t-opt-${i}`).value = '';
+      document.getElementById('t-correct').value = '0';
+      document.getElementById('t-hint').value = '';
+      document.getElementById('t-explanation').value = '';
+    }
+
+    function resetDefaultQuestions() {
+      questionBank = JSON.parse(JSON.stringify(DEFAULT_QUESTIONS));
+      saveQuestionsToStorage(questionBank);
+      clearTeacherForm();
+      renderTeacherQuestionList();
+      showToast('รีเซ็ตโจทย์กลับเป็นค่าเริ่มต้นแล้ว');
+    }
+
+    /*************************************************************************
+     * 11. OVERLAY MODAL & TOAST HELPERS
+     *************************************************************************/
+    function showOverlayModal(icon, title, desc, actions) {
+      document.getElementById('overlay-icon').textContent = icon;
+      document.getElementById('overlay-title').textContent = title;
+      document.getElementById('overlay-desc').textContent = desc;
+      const actEl = document.getElementById('overlay-actions');
+      actEl.innerHTML = '';
+      actions.forEach(a => {
+        const btn = document.createElement('button');
+        btn.className = `px-5 py-2.5 rounded-xl font-bold text-sm transition ${a.cls}`;
+        btn.textContent = a.text;
+        btn.onclick = a.fn;
+        actEl.appendChild(btn);
+      });
+      document.getElementById('modal-overlay-alert').classList.remove('hidden');
+    }
+
+    function closeOverlayModal() {
+      document.getElementById('modal-overlay-alert').classList.add('hidden');
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      box.textContent = msg;
+      box.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => box.classList.add('hidden'), 2600);
+    }
+  </script>
+</body>
+</html>
